@@ -1,0 +1,20 @@
+{
+    "name": "ParallelMind-Dev",
+    "build": {
+        "dockerfile": "../docker/Dockerfile"
+    },
+    "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+    },
+    "extensions": [
+        "ms-vscode.cpptools",
+        "ms-python.python",
+        "ms-vscode-remote.remote-containers"
+    ],
+    "mounts": [
+        "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+    ],
+    "runArgs": ["--gpus", "all"],
+    "remoteUser": "root",
+    "workspaceFolder": "/workspace"
+}
