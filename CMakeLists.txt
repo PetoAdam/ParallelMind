@@ -15,6 +15,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 add_library(core
     src/core/Matrix.cu
     src/core/Node.cpp
+    src/core/Layer.cpp
 )
 target_link_libraries(core PRIVATE CUDA::cudart)
 

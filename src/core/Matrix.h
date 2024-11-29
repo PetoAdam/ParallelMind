@@ -13,7 +13,7 @@ public:
     size_t rows() const;
     size_t cols() const;
 
-    float& operator()(size_t row, size_t col);
+    bool set(size_t row, size_t col, float value);
     float operator()(size_t row, size_t col) const;
 
     // Fills the matrix with random values

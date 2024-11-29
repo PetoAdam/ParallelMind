@@ -36,13 +36,14 @@ size_t Matrix::cols() const {
     return _cols;
 }
 
-float& Matrix::operator()(size_t row, size_t col) {
+bool Matrix::set(size_t row, size_t col, float value) {
     if(row >= _rows || col >= _cols) // Ensure within bounds
     {
         throw std::out_of_range("Matrix element index out of range");
     }
-    
-    return _data[row * _cols + col];  // Return element (row-major order)
+    cudaMemcpy(&value, _data + row * _cols + col, sizeof(float), cudaMemcpyDeviceToHost);
+    std::cout << "Value: " << value << std::endl;
+    return true;
 }
 
 float Matrix::operator()(size_t row, size_t col) const {
