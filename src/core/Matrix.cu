@@ -41,8 +41,8 @@ bool Matrix::set(size_t row, size_t col, float value) {
     {
         throw std::out_of_range("Matrix element index out of range");
     }
-    cudaMemcpy(&value, _data + row * _cols + col, sizeof(float), cudaMemcpyDeviceToHost);
-    std::cout << "Value: " << value << std::endl;
+    cudaMemcpy(_data + row * _cols + col, &value, sizeof(float), cudaMemcpyHostToDevice);
+    //cudaDeviceSynchronize();
     return true;
 }
 
@@ -51,8 +51,9 @@ float Matrix::operator()(size_t row, size_t col) const {
     {
         throw std::out_of_range("Matrix element index out of range");
     }
-    
-    return _data[row * _cols + col];  // Return element (row-major order)
+    float value;
+    cudaMemcpy(&value, _data + row * _cols + col, sizeof(float), cudaMemcpyDeviceToHost);
+    return value;
 }
 
 void Matrix::allocate() {

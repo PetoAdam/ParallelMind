@@ -24,6 +24,8 @@ Matrix Layer::forward(const Matrix& input) {
     for (size_t i = 0; i < _numNodes; ++i) {
         std::cout << "Processing node " << i << std::endl;
         _nodes[i].setInput(input);  // Set input for each node
+        // TODO: batch data, set uses cudaMemCopy, which is more effective with larger chunks of data at once
+        // This is always 1 column, so we don't have to worry about not continuous memory
         output.set(i, 0, _nodes[i].activate()); // Activate node and store result
     }
 
