@@ -33,6 +33,23 @@ Matrix Layer::forward(const Matrix& input) {
     return output;
 }
 
+Matrix Layer::backward(const Matrix& error, float learningRate) {
+    // Calculate gradients for each node and propagate the error back through the layer
+    Matrix gradient(_numNodes, 1);  // Gradient matrix
+
+    // Calculate gradient for each node in the layer
+    for (size_t i = 0; i < _numNodes; ++i) {
+        gradient.set(i, 0, _nodes[i].computeGradient(error(i, 0)));
+    }
+
+    // Update the weights for each node
+    for (size_t i = 0; i < _numNodes; ++i) {
+        _nodes[i].updateWeights(learningRate);
+    }
+
+    return gradient;  // Return error propagated back to the previous layer
+}
+
 
 size_t Layer::getNumNodes() const {
     return _numNodes;

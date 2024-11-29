@@ -15,6 +15,9 @@ public:
     // Perform forward propagation: pass input through the layer
     Matrix forward(const Matrix& input);
 
+    // Perform back propagation
+    Matrix backward(const Matrix& error, float learningRate);
+
     // Get the number of nodes in the layer
     size_t getNumNodes() const;
 

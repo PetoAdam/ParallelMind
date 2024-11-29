@@ -22,6 +22,9 @@ RUN apt update && apt install -y \
     && apt update \
     && apt install -y cmake
 
+# Install required python libraries
+RUN pip3 install torchvision numpy
+
 # Install VS Code server dependencies (if using devcontainer)
 RUN apt update && apt install -y \
     curl unzip && \

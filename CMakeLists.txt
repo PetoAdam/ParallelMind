@@ -16,7 +16,13 @@ add_library(core
     src/core/Matrix.cu
     src/core/Node.cpp
     src/core/Layer.cpp
+    src/core/Network.cpp
 )
+
+add_library(utils
+    src/utils/NpyReader.cpp
+)
+
 target_link_libraries(core PRIVATE CUDA::cudart)
 
 # Add subdirectories
@@ -27,7 +33,11 @@ add_subdirectory(examples)
 enable_testing()
 add_subdirectory(tests)
 
-# Hello World executable
+# Hello World executable for testing CUDA
 add_executable(hello_world src/gpu/hello_world.cu)
 target_link_libraries(hello_world PRIVATE CUDA::cudart)
+
+# ParallelMind executable
+add_executable(parallelmind src/core/main.cpp)
+target_link_libraries(parallelmind PRIVATE CUDA::cudart core utils)
 

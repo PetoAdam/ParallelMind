@@ -12,8 +12,8 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
     # Add test executable for each source file
     add_executable(${TEST_NAME} ${TEST_SOURCE})
     
-    # Link the test executable to the core library and CUDA libraries
-    target_link_libraries(${TEST_NAME} PRIVATE core CUDA::cudart)
+    # Link the test executable to the core, util library and CUDA libraries
+    target_link_libraries(${TEST_NAME} PRIVATE core utils CUDA::cudart)
 
     # Ensure CUDA include paths are available to the test target
     target_include_directories(${TEST_NAME} PRIVATE ${CUDAToolkit_INCLUDE_DIRS})

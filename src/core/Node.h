@@ -2,6 +2,7 @@
 #define PARALLELMIND_NODE_H
 
 #include "Matrix.h"
+#include <vector>
 
 class Node {
 public:
@@ -9,8 +10,11 @@ public:
     ~Node();
 
     size_t getInputSize() const { return _inputSize; }
+
     void setInput(const Matrix& input);
     float activate() const;
+    float computeGradient(float error);
+    void updateWeights(float learningRate);
 
 private:
     size_t _inputSize;

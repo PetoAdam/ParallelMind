@@ -35,3 +35,15 @@ float Node::activate() const {
 float Node::sigmoid(float x) const {
     return 1.0f / (1.0f + std::exp(-x));
 }
+
+float Node::computeGradient(float error) {
+    // Compute gradient using chain rule, etc. (this is a simple example)
+    return error * activate() * (1 - activate());
+}
+
+void Node::updateWeights(float learningRate) {
+    // Use gradient descent to update the weights (simplified)
+    for (size_t i = 0; i < _inputSize; ++i) {
+        _weights.set(i, 0, _weights(i, 0) - learningRate * _input(i, 0));
+    }
+}
