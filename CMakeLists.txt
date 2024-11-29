@@ -11,6 +11,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Include directories
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
+# Add the core library
+add_library(core
+    src/core/Matrix.cu
+    src/core/Node.cpp
+)
+target_link_libraries(core PRIVATE CUDA::cudart)
+
 # Add subdirectories
 add_subdirectory(src)
 add_subdirectory(examples)
@@ -19,6 +26,7 @@ add_subdirectory(examples)
 enable_testing()
 add_subdirectory(tests)
 
+# Hello World executable
 add_executable(hello_world src/gpu/hello_world.cu)
 target_link_libraries(hello_world PRIVATE CUDA::cudart)
 
