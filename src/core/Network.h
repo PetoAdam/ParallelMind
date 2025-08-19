@@ -3,6 +3,7 @@
 
 #include "Layer.h"
 #include <vector>
+#include <string>
 
 class Network {
 public:
@@ -20,6 +21,10 @@ public:
 
     // Train the network on the MNIST dataset
     void train(const std::vector<Matrix>& inputs, const std::vector<Matrix>& targets, size_t epochs, float learningRate);
+
+    // Save / Load model (simple binary format)
+    void save(const std::string& path) const;
+    static Network load(const std::string& path);
 
 private:
     std::vector<Layer> _layers;

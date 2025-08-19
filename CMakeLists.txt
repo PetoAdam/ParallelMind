@@ -37,7 +37,5 @@ add_subdirectory(tests)
 add_executable(hello_world src/gpu/hello_world.cu)
 target_link_libraries(hello_world PRIVATE CUDA::cudart)
 
-# ParallelMind executable
-add_executable(parallelmind src/core/main.cpp)
-target_link_libraries(parallelmind PRIVATE CUDA::cudart core utils)
+# (no core executable; examples define their own mains)
 

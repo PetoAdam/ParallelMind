@@ -1,56 +1,96 @@
 #include "Layer.h"
 #include <stdexcept>
-#include <iostream>
 
-Layer::Layer(size_t numNodes, size_t inputSize)
-    : _numNodes(numNodes) {
-    for (size_t i = 0; i < numNodes; ++i) {
-        _nodes.push_back(Node(inputSize));  // Create nodes with the specified input size
-    }
+Layer::Layer(size_t numNodes, size_t inputSize, ActivationType activation)
+        : _numNodes(numNodes), _inputSize(inputSize), _activation(activation),
+                    _W(numNodes, inputSize), _b(numNodes, 1), _lastInput(inputSize,1), _lastZ(numNodes,1) {
+                _W.randomize();
+                // zero bias
+                std::vector<float> zeros(numNodes, 0.0f);
+                _b.copyFromHost(zeros.data(), numNodes);
 }
 
 Layer::~Layer() {}
 
 Matrix Layer::forward(const Matrix& input) {
-    // Ensure the input size matches the layer's expected input size
-    if (input.rows() != _nodes[0].getInputSize() || input.cols() != 1) {
+    if (input.rows() != _inputSize || input.cols() != 1) {
         throw std::invalid_argument("Input size does not match the expected size of the layer.");
     }
-
-    std::cout << "Input size is correct. Proceeding with forward pass..." << std::endl;
-
-    // Pass the input through each node in the layer
-    Matrix output(_numNodes, 1);  // Output matrix has the size of the number of nodes
-    for (size_t i = 0; i < _numNodes; ++i) {
-        std::cout << "Processing node " << i << std::endl;
-        _nodes[i].setInput(input);  // Set input for each node
-        // TODO: batch data, set uses cudaMemCopy, which is more effective with larger chunks of data at once
-        // This is always 1 column, so we don't have to worry about not continuous memory
-        output.set(i, 0, _nodes[i].activate()); // Activate node and store result
-    }
-
-    std::cout << "Forward pass completed." << std::endl;
-    return output;
+    // Cache input
+    cudaMemcpy(_lastInput.data(), input.data(), _inputSize*sizeof(float), cudaMemcpyDeviceToDevice);
+    // z = W * x
+    _lastZ = Matrix::multiply(_W, input);
+    // y = z + b
+    addBias(_lastZ.data(), _b.data(), _numNodes);
+    // activation
+    Matrix out = Matrix(_numNodes,1);
+    cudaMemcpy(out.data(), _lastZ.data(), _numNodes*sizeof(float), cudaMemcpyDeviceToDevice);
+    if (_activation == ActivationType::ReLU) {
+        reluInplace(out.data(), _numNodes);
+    } else if (_activation == ActivationType::Sigmoid) {
+        sigmoidInplace(out.data(), _numNodes);
+    } // Linear: no-op
+    return out;
 }
 
 Matrix Layer::backward(const Matrix& error, float learningRate) {
-    // Calculate gradients for each node and propagate the error back through the layer
-    Matrix gradient(_numNodes, 1);  // Gradient matrix
+    // Compute delta = error * activation'(z)
+    Matrix activated = forward(_lastInput); // activation of cached z
+    Matrix delta(_numNodes,1);
+    // mode: 0 ReLU, 1 Sigmoid, 2 Linear
+    int mode = (_activation==ActivationType::ReLU?0:(_activation==ActivationType::Sigmoid?1:2));
+    computeDelta(delta.data(), error.data(), activated.data(), mode, _numNodes);
 
-    // Calculate gradient for each node in the layer
-    for (size_t i = 0; i < _numNodes; ++i) {
-        gradient.set(i, 0, _nodes[i].computeGradient(error(i, 0)));
+    // prevError = W^T * delta
+    // W: [M x N], delta: [M x 1] -> prevError: [N x 1]
+    // Instead of custom kernel, use multiply on transposed by constructing a temporary transposed Matrix (simple for 1D col vecs we can do accumulate kernel). For simplicity, use accumulate kernel per row.
+    Matrix prevError(_inputSize,1);
+    std::vector<float> zeros(_inputSize, 0.0f);
+    prevError.copyFromHost(zeros.data(), _inputSize);
+    // Accumulate prevError += delta[i] * W[i,:]^T
+    // Copy delta to host for scale values
+    std::vector<float> delta_h(_numNodes);
+    delta.copyToHost(delta_h.data(), _numNodes);
+    for (size_t i=0;i<_numNodes;++i) {
+        vecAccumulate(prevError.data(), _W.data() + i*_inputSize, delta_h[i], _inputSize);
     }
 
-    // Update the weights for each node
-    for (size_t i = 0; i < _numNodes; ++i) {
-        _nodes[i].updateWeights(learningRate);
+    // Update weights and bias: W := W - lr * (delta * x^T), b := b - lr * delta
+    // For each row i: W[i,:] += (-lr*delta[i]) * lastInput^T
+    for (size_t i=0;i<_numNodes;++i) {
+        vecUpdate(_W.data() + i*_inputSize, _lastInput.data(), -learningRate * delta_h[i], _inputSize);
     }
+    // b update
+    // Copy delta to host once (already have delta_h)
+    std::vector<float> b_h(_numNodes);
+    _b.copyToHost(b_h.data(), _numNodes);
+    for (size_t i=0;i<_numNodes;++i) b_h[i] -= learningRate * delta_h[i];
+    _b.copyFromHost(b_h.data(), _numNodes);
 
-    return gradient;  // Return error propagated back to the previous layer
+    return prevError;
 }
 
 
 size_t Layer::getNumNodes() const {
     return _numNodes;
+}
+
+void Layer::getWeightsHost(std::vector<float>& out) const {
+    out.resize(_numNodes * _inputSize);
+    _W.copyToHost(out.data(), out.size());
+}
+
+void Layer::getBiasHost(std::vector<float>& out) const {
+    out.resize(_numNodes);
+    _b.copyToHost(out.data(), out.size());
+}
+
+void Layer::setWeightsHost(const std::vector<float>& in) {
+    if (in.size() != _numNodes * _inputSize) throw std::runtime_error("weights size mismatch");
+    _W.copyFromHost(in.data(), in.size());
+}
+
+void Layer::setBiasHost(const std::vector<float>& in) {
+    if (in.size() != _numNodes) throw std::runtime_error("bias size mismatch");
+    _b.copyFromHost(in.data(), in.size());
 }
