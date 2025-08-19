@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache MNIST data and npy files
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/mnist/data
+            data/mnist/*.npy
+          key: mnist-${{ runner.os }}-${{ hashFiles('data/mnist/mnist_download.py') }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build dev image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: false
+          tags: parallelmind-dev:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate MNIST .npy files (for CPU-only test)
+        run: |
+          docker run --rm \
+            -v "$PWD":/workspace \
+            -w /workspace/data/mnist \
+            parallelmind-dev:ci \
+            bash -lc "python3 -c 'import sys; import importlib; sys.exit(0 if importlib.util.find_spec("torch") else 1)' || pip3 install --no-cache-dir torch torchvision numpy; python3 mnist_download.py"
+
+      - name: Build project in container
+        run: |
+          docker run --rm \
+            -v "$PWD":/workspace \
+            -w /workspace \
+            parallelmind-dev:ci \
+            bash -lc "mkdir -p build && cd build && cmake .. && make -j"
+
+      - name: Run fast CPU-only test (npy reader)
+        run: |
+          docker run --rm \
+            -v "$PWD":/workspace \
+            -w /workspace/build \
+            parallelmind-dev:ci \
+            bash -lc "ctest -R test_npy_reader --output-on-failure"
+
+      - name: Print artifacts on failure
+        if: failure()
+        run: |
+          docker run --rm \
+            -v "$PWD":/workspace \
+            -w /workspace/build \
+            parallelmind-dev:ci \
+            bash -lc "ls -R && cat CMakeCache.txt | head -n 200 || true"

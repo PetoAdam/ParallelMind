@@ -1,5 +1,7 @@
 # ParallelMind
 
+[![CI](https://github.com/PetoAdam/ParallelMind/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/PetoAdam/ParallelMind/actions/workflows/ci.yml)
+
 A small, CUDA‑first neural network library in modern C++. It’s designed to be easy to read, fast on GPU, and fun to hack on.
 
 ## Highlights
