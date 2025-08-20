@@ -34,6 +34,8 @@ jobs:
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            INSTALL_PY_DEPS=0
 
       - name: Generate MNIST .npy files (for CPU-only test)
         run: |
@@ -41,7 +43,7 @@ jobs:
             -v "$PWD":/workspace \
             -w /workspace/data/mnist \
             parallelmind-dev:ci \
-            bash -lc "python3 -c 'import sys; import importlib; sys.exit(0 if importlib.util.find_spec("torch") else 1)' || pip3 install --no-cache-dir torch torchvision numpy; python3 mnist_download.py"
+            bash -lc "pip3 install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch torchvision numpy; python3 mnist_download.py"
 
       - name: Build project in container
         run: |

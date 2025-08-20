@@ -22,8 +22,19 @@ RUN apt update && apt install -y \
     && apt update \
     && apt install -y cmake
 
-# Install required python libraries
-RUN pip3 install torchvision numpy
+# Optional: install Python libraries (controlled via build args)
+# By default this is disabled to keep the image small and CI-friendly.
+ARG INSTALL_PY_DEPS=0
+# Set to "cpu" to force CPU-only PyTorch wheels (smaller); leave empty for default upstream selection
+ARG PYTORCH_CHANNEL=
+RUN if [ "$INSTALL_PY_DEPS" = "1" ]; then \
+            pip3 install --no-cache-dir numpy && \
+            if [ "$PYTORCH_CHANNEL" = "cpu" ]; then \
+                pip3 install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch torchvision; \
+            else \
+                pip3 install --no-cache-dir torch torchvision; \
+            fi; \
+        fi
 
 # Install VS Code server dependencies (if using devcontainer)
 RUN apt update && apt install -y \

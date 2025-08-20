@@ -17,26 +17,39 @@ A small, CUDA‑first neural network library in modern C++. It’s designed to b
 This repo includes a dev-friendly Docker setup based on `nvidia/cuda:12.2.2-cudnn8-devel-ubuntu20.04`.
 
 - Requires: NVIDIA driver + Docker + NVIDIA Container Toolkit.
-- Image installs: build-essential, recent CMake, Python3/pip, and Python deps for MNIST (`numpy`, `torchvision`).
+- Image includes: build-essential, recent CMake, Python3/pip.
+- Optional Python deps (numpy/torch/torchvision) can be preinstalled via build args to keep images lean by default.
 
-Quickstart:
+Build options:
 ```bash
-# Build the dev image (from repo root)
+# 1) Lean image (default, no heavy Python deps baked in)
 docker build -f docker/Dockerfile -t parallelmind-dev .
 
-# Run with GPU access and mount the repo
+# 2) Convenience image with Python deps preinstalled
+docker build -f docker/Dockerfile -t parallelmind-dev \
+  --build-arg INSTALL_PY_DEPS=1 \
+  # use CPU-only wheels to keep size reasonable (omit to let pip pick GPU builds)
+  --build-arg PYTORCH_CHANNEL=cpu \
+  .
+```
+Run the container and build the project:
+```bash
 docker run --gpus all -it --rm \
   -v "$PWD":/workspace \
   -w /workspace \
   parallelmind-dev
 
-# Inside the container, build
+# Inside the container
 mkdir -p build && cd build && cmake .. && make -j
-
-# (Optional) generate MNIST data
+```
+Generate MNIST data (if not preinstalled, install deps inside the container first):
+```bash
+# Inside the container
+pip3 install --no-cache-dir numpy torch torchvision  # or CPU wheels if preferred
 cd /workspace/data/mnist && python3 mnist_download.py
-
-# Run example (from /workspace/build)
+```
+Run example (from `/workspace/build`):
+```bash
 ./examples/mnist_example --train --save mnist.pmmdl
 ```
 For VS Code Dev Containers, use this image and ensure GPU passthrough is enabled.
@@ -91,6 +104,12 @@ ctest --output-on-failure
 ```
 This runs unit tests for matrix ops, layers, nodes, and the NPY reader.
 
+## Continuous Integration
+- GitHub Actions builds the Docker image (lean variant) and caches MNIST datasets.
+- CI installs CPU-only `torch`, `torchvision`, and `numpy` at runtime to generate `.npy` files.
+- The workflow builds the project and runs only fast tests (currently `test_npy_reader`).
+- The MNIST training example is intentionally not run in CI to keep builds fast and reliable.
+
 ## Project layout
 ```
 src/            # Core library (Matrix, Layer, Network, CUDA kernels)
@@ -100,7 +119,6 @@ data/mnist/     # MNIST download/convert script and generated .npy files
 ```
 
 ## Roadmap
-- CI/CD: add build + test workflows (Linux GPU and CPU-only matrices)
 - Training: softmax + cross-entropy, mini-batching
 - Performance: more fused CUDA kernels, better memory reuse
 - Features: model config I/O (JSON/YAML), metrics & logging improvements
