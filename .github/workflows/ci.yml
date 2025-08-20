@@ -13,59 +13,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache MNIST data and npy files
-        uses: actions/cache@v4
-        with:
-          path: |
-            data/mnist/data
-            data/mnist/*.npy
-          key: mnist-${{ runner.os }}-${{ hashFiles('data/mnist/mnist_download.py') }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build dev image
+      - name: Build devcontainer image (no load/push)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile
           push: false
-          tags: parallelmind-dev:ci
-          load: true
+          load: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             INSTALL_PY_DEPS=0
 
-      - name: Generate MNIST .npy files (for CPU-only test)
-        run: |
-          docker run --rm \
-            -v "$PWD":/workspace \
-            -w /workspace/data/mnist \
-            parallelmind-dev:ci \
-            bash -lc "pip3 install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch torchvision numpy; python3 mnist_download.py"
-
-      - name: Build project in container
+      - name: Configure and build in official CUDA container
         run: |
           docker run --rm \
             -v "$PWD":/workspace \
             -w /workspace \
-            parallelmind-dev:ci \
-            bash -lc "mkdir -p build && cd build && cmake .. && make -j"
+            nvidia/cuda:12.2.2-devel-ubuntu20.04 \
+            bash -lc "apt-get update && apt-get install -y --no-install-recommends build-essential cmake && \
+                      mkdir -p build && cd build && cmake .. && make -j"
 
-      - name: Run fast CPU-only test (npy reader)
+      - name: Run unit tests (exclude dataset-dependent tests)
         run: |
           docker run --rm \
             -v "$PWD":/workspace \
             -w /workspace/build \
-            parallelmind-dev:ci \
-            bash -lc "ctest -R test_npy_reader --output-on-failure"
-
-      - name: Print artifacts on failure
-        if: failure()
-        run: |
-          docker run --rm \
-            -v "$PWD":/workspace \
-            -w /workspace/build \
-            parallelmind-dev:ci \
-            bash -lc "ls -R && cat CMakeCache.txt | head -n 200 || true"
+            nvidia/cuda:12.2.2-devel-ubuntu20.04 \
+            bash -lc "ctest --output-on-failure -E test_npy_reader"

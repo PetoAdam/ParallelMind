@@ -28,8 +28,8 @@ docker build -f docker/Dockerfile -t parallelmind-dev .
 # 2) Convenience image with Python deps preinstalled
 docker build -f docker/Dockerfile -t parallelmind-dev \
   --build-arg INSTALL_PY_DEPS=1 \
-  # use CPU-only wheels to keep size reasonable (omit to let pip pick GPU builds)
-  --build-arg PYTORCH_CHANNEL=cpu \
+  # Optional: use CPU-only wheels to keep size reasonable (omit to let pip pick GPU builds)
+  #--build-arg PYTORCH_CHANNEL=cpu \
   .
 ```
 Run the container and build the project:
@@ -105,10 +105,10 @@ ctest --output-on-failure
 This runs unit tests for matrix ops, layers, nodes, and the NPY reader.
 
 ## Continuous Integration
-- GitHub Actions builds the Docker image (lean variant) and caches MNIST datasets.
-- CI installs CPU-only `torch`, `torchvision`, and `numpy` at runtime to generate `.npy` files.
-- The workflow builds the project and runs only fast tests (currently `test_npy_reader`).
-- The MNIST training example is intentionally not run in CI to keep builds fast and reliable.
+- CI compiles inside the official `nvidia/cuda:12.2.2-devel-ubuntu20.04` container (no custom image export), which avoids disk pressure.
+- MNIST downloads and dataset-dependent tests are skipped in CI to keep runs fast and small.
+- GPU-dependent tests and the MNIST training example are not executed on GitHub-hosted runners (no GPU). They’re intended to be run locally or on a self-hosted GPU runner.
+- The build step still validates that the project compiles cleanly.
 
 ## Project layout
 ```
@@ -119,6 +119,7 @@ data/mnist/     # MNIST download/convert script and generated .npy files
 ```
 
 ## Roadmap
+- CI/CD: add build + test workflows (Linux GPU and CPU-only matrices)
 - Training: softmax + cross-entropy, mini-batching
 - Performance: more fused CUDA kernels, better memory reuse
 - Features: model config I/O (JSON/YAML), metrics & logging improvements
