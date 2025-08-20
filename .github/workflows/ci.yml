@@ -16,39 +16,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build devcontainer image (no load/push)
+      - name: Build devcontainer image (load locally)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile
+          tags: "local/parallelmind-dev:latest"
           push: false
-          load: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          load: true
           build-args: |
             INSTALL_PY_DEPS=0
 
-      - name: Configure and build in official CUDA container
+      - name: Configure and build in devcontainer image
         run: |
           docker run --rm \
             -v "$PWD":/workspace \
             -w /workspace \
-            nvidia/cuda:12.2.2-devel-ubuntu20.04 \
-            bash -lc "export DEBIAN_FRONTEND=noninteractive TZ=UTC; \
-                      ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime; \
-                      apt-get update && \
-                      apt-get install -y --no-install-recommends tzdata && \
-                      dpkg-reconfigure -f noninteractive tzdata && \
-                      apt-get install -y --no-install-recommends build-essential software-properties-common lsb-release wget gpg && \
-                      wget -qO- https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null && \
-                      apt-add-repository \"deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main\" && \
-                      apt-get update && apt-get install -y --no-install-recommends cmake && \
-                      mkdir -p build && cd build && cmake .. && make -j"
+            local/parallelmind-dev:latest \
+            bash -lc "cmake --version && mkdir -p build && cd build && cmake .. && make -j"
 
       - name: Run unit tests (exclude dataset-dependent tests)
         run: |
           docker run --rm \
             -v "$PWD":/workspace \
             -w /workspace/build \
-            nvidia/cuda:12.2.2-devel-ubuntu20.04 \
-            bash -lc "ctest --output-on-failure -E test_npy_reader"
+            local/parallelmind-dev:latest \
+            bash -lc "ctest --version && ctest --output-on-failure -E test_npy_reader"

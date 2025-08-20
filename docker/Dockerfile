@@ -11,21 +11,20 @@ RUN ln -fs /usr/share/zoneinfo/$TZ /etc/localtime && \
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential cmake git python3 python3-pip && \
+    build-essential git python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install CMake (3.18+), adding Kitware repo with signed-by keyring
+# Install CMake 4.1.0 via tarball (avoids apt dependency issues on 20.04)
+ENV CMAKE_VER=4.1.0
 RUN apt-get update && apt-get install -y --no-install-recommends \
-     ca-certificates gnupg wget lsb-release \
-     && rm -rf /var/lib/apt/lists/* \
-     && echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main" \
-         | tee /etc/apt/sources.list.d/kitware.list >/dev/null \
-     && wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc \
-         | gpg --dearmor - \
-         | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null \
-     && apt-get update \
-     && apt-get install -y --no-install-recommends kitware-archive-keyring cmake \
-     && apt-get clean && rm -rf /var/lib/apt/lists/*
+      ca-certificates curl tar \
+    && rm -rf /var/lib/apt/lists/* \
+    && CMAKE_MM=$(echo ${CMAKE_VER} | awk -F. '{print $1"."$2}') \
+    && (curl -fsSL -o /tmp/cmake.tgz https://cmake.org/files/v${CMAKE_MM}/cmake-${CMAKE_VER}-linux-x86_64.tar.gz \
+        || curl -fsSL -o /tmp/cmake.tgz https://github.com/Kitware/CMake/releases/download/v${CMAKE_VER}/cmake-${CMAKE_VER}-linux-x86_64.tar.gz) \
+    && mkdir -p /opt && tar -xzf /tmp/cmake.tgz -C /opt \
+    && ln -s /opt/cmake-${CMAKE_VER}-linux-x86_64 /opt/cmake
+ENV PATH=/opt/cmake/bin:$PATH
 
 # Optional: install Python libraries (controlled via build args)
 # By default this is disabled to keep the image small and CI-friendly.
