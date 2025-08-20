@@ -14,21 +14,18 @@ RUN apt-get update && apt-get install -y \
     build-essential cmake git python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install CMake 3.18 or higher from Kitware repository
-RUN apt-get update && apt-get install -y \
-    software-properties-common lsb-release \
-    && apt-get clean all \
-    && apt-get remove --purge --auto-remove -y cmake \
-    && apt-get update \
-    && apt-get install -y wget \
-    && wget -qO- https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null \
-    && apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main" \
-    && apt-get update \
-    && apt-get install -y kitware-archive-keyring \
-    && rm /etc/apt/trusted.gpg.d/kitware.gpg \
-    && apt-get update \
-    && apt-get install -y cmake \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Install CMake (3.18+), adding Kitware repo with signed-by keyring
+RUN apt-get update && apt-get install -y --no-install-recommends \
+     ca-certificates gnupg wget lsb-release \
+     && rm -rf /var/lib/apt/lists/* \
+     && echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main" \
+         | tee /etc/apt/sources.list.d/kitware.list >/dev/null \
+     && wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc \
+         | gpg --dearmor - \
+         | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null \
+     && apt-get update \
+     && apt-get install -y --no-install-recommends kitware-archive-keyring cmake \
+     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Optional: install Python libraries (controlled via build args)
 # By default this is disabled to keep the image small and CI-friendly.
