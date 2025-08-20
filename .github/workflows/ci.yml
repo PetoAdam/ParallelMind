@@ -34,7 +34,12 @@ jobs:
             -v "$PWD":/workspace \
             -w /workspace \
             nvidia/cuda:12.2.2-devel-ubuntu20.04 \
-            bash -lc "apt-get update && apt-get install -y --no-install-recommends build-essential cmake && \
+            bash -lc "export DEBIAN_FRONTEND=noninteractive TZ=UTC; \
+                      ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime; \
+                      apt-get update && \
+                      apt-get install -y --no-install-recommends tzdata && \
+                      dpkg-reconfigure -f noninteractive tzdata && \
+                      apt-get install -y --no-install-recommends build-essential cmake && \
                       mkdir -p build && cd build && cmake .. && make -j"
 
       - name: Run unit tests (exclude dataset-dependent tests)
