@@ -39,7 +39,12 @@ jobs:
                       apt-get update && \
                       apt-get install -y --no-install-recommends tzdata && \
                       dpkg-reconfigure -f noninteractive tzdata && \
-                      apt-get install -y --no-install-recommends build-essential cmake && \
+                      apt-get install -y --no-install-recommends build-essential ca-certificates curl tar && \
+                      CMAKE_VER=4.1.0 && \
+                      curl -fsSL -o /tmp/cmake.tgz https://github.com/Kitware/CMake/releases/download/v${CMAKE_VER}/cmake-${CMAKE_VER}-linux-x86_64.tar.gz && \
+                      mkdir -p /opt && tar -xzf /tmp/cmake.tgz -C /opt && \
+                      export PATH=/opt/cmake-${CMAKE_VER}-linux-x86_64/bin:$PATH && \
+                      cmake --version && \
                       mkdir -p build && cd build && cmake .. && make -j"
 
       - name: Run unit tests (exclude dataset-dependent tests)
