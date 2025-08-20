@@ -1,0 +1,6 @@
+# Optional Python dependencies for MNIST data generation and preview
+numpy
+# CPU-only wheels to keep size small in most environments; change index-url if you want GPU builds locally:
+#--index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision

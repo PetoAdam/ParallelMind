@@ -17,8 +17,8 @@ A small, CUDA‑first neural network library in modern C++. It’s designed to b
 This repo includes a dev-friendly Docker setup based on `nvidia/cuda:12.2.2-cudnn8-devel-ubuntu20.04`.
 
 - Requires: NVIDIA driver + Docker + NVIDIA Container Toolkit.
-- Image includes: build-essential, recent CMake, Python3/pip.
-- Optional Python deps (numpy/torch/torchvision) can be preinstalled via build args to keep images lean by default.
+- The image ships without heavy Python ML packages by default to keep it lean.
+- If you want to run the MNIST data script or Python previews, install the optional Python deps inside the container using `requirements.txt`.
 
 Build options:
 ```bash
@@ -42,33 +42,29 @@ docker run --gpus all -it --rm \
 # Inside the container
 mkdir -p build && cd build && cmake .. && make -j
 ```
-Generate MNIST data (if not preinstalled, install deps inside the container first):
+Install Python deps for MNIST (inside the container):
 ```bash
-# Inside the container
-pip3 install --no-cache-dir numpy torch torchvision  # or CPU wheels if preferred
-cd /workspace/data/mnist && python3 mnist_download.py
+pip3 install -r requirements.txt
+cd data/mnist && python3 mnist_download.py
 ```
-Run example (from `/workspace/build`):
+Run the C++ example (from `/workspace/build`):
 ```bash
 ./examples/mnist_example --train --save mnist.pmmdl
 ```
-For VS Code Dev Containers, use this image and ensure GPU passthrough is enabled.
 
 ## Requirements
 - NVIDIA GPU with a compatible CUDA toolkit (tested with CUDA 12.2)
 - CMake (3.18+ recommended)
 - A C++17 compiler and NVCC
-- Optional (only to generate MNIST `.npy` files): Python 3 with `numpy`, `torch`, and `torchvision`
+- Optional (only to generate MNIST `.npy` files): Python 3 with `numpy`, `torch`, and `torchvision` (see `requirements.txt`)
 
 ## Getting the MNIST data
 This repository does not include the MNIST `.npy` files. Use the provided script to download and convert MNIST into NumPy arrays:
 
 ```bash
-# From the project root
+# From the project root (inside container)
+pip3 install -r requirements.txt
 cd data/mnist
-# (Optional) install dependencies if you don't already have them
-pip3 install --user numpy torch torchvision
-# Generate the .npy files in data/mnist/
 python3 mnist_download.py
 ```
 The script will create these files in `data/mnist/`:
@@ -105,10 +101,8 @@ ctest --output-on-failure
 This runs unit tests for matrix ops, layers, nodes, and the NPY reader.
 
 ## Continuous Integration
-- CI compiles inside the official `nvidia/cuda:12.2.2-devel-ubuntu20.04` container (no custom image export), which avoids disk pressure.
-- MNIST downloads and dataset-dependent tests are skipped in CI to keep runs fast and small.
-- GPU-dependent tests and the MNIST training example are not executed on GitHub-hosted runners (no GPU). They’re intended to be run locally or on a self-hosted GPU runner.
-- The build step still validates that the project compiles cleanly.
+- CI compiles inside an official CUDA container and runs only basic tests (no MNIST downloads, no GPU-dependent tests).
+- The devcontainer image is built in CI for validation but not loaded or pushed.
 
 ## Project layout
 ```
