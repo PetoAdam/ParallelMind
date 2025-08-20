@@ -28,6 +28,7 @@ public:
 
     // Activation type
     ActivationType activation() const { return _activation; }
+    void setActivation(ActivationType a) { _activation = a; }
 
     // Serialization helpers
     void getWeightsHost(std::vector<float>& out) const;          // size: numNodes*inputSize

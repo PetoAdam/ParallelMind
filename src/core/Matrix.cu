@@ -216,3 +216,33 @@ void computeDelta(float* delta, const float* error, const float* activated, int 
     deltaKernel<<<grid, block>>>(delta, error, activated, mode, n);
     cudaDeviceSynchronize();
 }
+
+// Softmax: compute numerically stable softmax for a single vector
+__global__ void softmaxKernel(float* x, size_t n, float maxval, float sumexp) {
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        x[idx] = expf(x[idx] - maxval) / sumexp;
+    }
+}
+
+void softmaxInplace(float* logits, size_t n) {
+    // Copy to host to compute max and sumexp cheaply (n is output size, typically small)
+    std::vector<float> h(n);
+    cudaMemcpy(h.data(), logits, n*sizeof(float), cudaMemcpyDeviceToHost);
+    float maxv = -1e30f; for (size_t i=0;i<n;++i) if (h[i] > maxv) maxv = h[i];
+    float sumexp = 0.0f; for (size_t i=0;i<n;++i) sumexp += expf(h[i] - maxv);
+    dim3 block(256); dim3 grid((n + block.x - 1)/block.x);
+    softmaxKernel<<<grid, block>>>(logits, n, maxv, sumexp);
+    cudaDeviceSynchronize();
+}
+
+// grad = softmax(logits) - target
+void softmaxCrossEntropyGrad(float* grad, const float* logits, const float* target, size_t n) {
+    // Compute softmax(logits) into grad buffer, then subtract target
+    cudaMemcpy(grad, logits, n*sizeof(float), cudaMemcpyDeviceToDevice);
+    softmaxInplace(grad, n);
+    // grad -= target
+    dim3 block(256); dim3 grid((n + block.x - 1)/block.x);
+    vecAccumulateKernel<<<grid, block>>>(grad, target, -1.0f, n);
+    cudaDeviceSynchronize();
+}

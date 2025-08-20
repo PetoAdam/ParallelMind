@@ -5,8 +5,9 @@ A small, CUDA‑first neural network library in modern C++. It’s designed to b
 ## Highlights
 - GPU-accelerated math (C++17 + CUDA)
 - Simple feedforward networks (dense layers)
-- Activations: ReLU, Sigmoid, Linear
-- SGD training with shuffling
+- Activations: ReLU, Sigmoid, Linear, Softmax
+- Loss: Cross-entropy (with Softmax output)
+- SGD training with shuffling and mini-batching
 - Save/Load models (binary format)
 - MNIST example app (train or load + ASCII visualization)
 - Unit tests for core components
@@ -66,6 +67,37 @@ Notes:
 - The Docker image is lean by default; install Python deps inside it only if you need the MNIST script: `pip3 install -r requirements.txt`.
 - The example reports accuracy and can print ASCII digits with predictions.
 
+## Training options and math (concise)
+
+Activations (per neuron):
+- ReLU: a = max(0, z). Derivative: a' = 1 if z > 0 else 0.
+- Sigmoid: a = 1/(1 + e^(−z)). Derivative: a' = a·(1−a).
+- Linear: a = z. Derivative: a' = 1.
+- Softmax (vector): y_i = exp(z_i − max(z)) / Σ_j exp(z_j − max(z)). Stable subtract avoids overflow.
+
+Loss (multi-class): Cross-entropy L = −Σ_i t_i log y_i, where t is one‑hot target and y is Softmax output.
+- Gradient w.r.t. logits z: ∂L/∂z = y − t. This is what the trainer backpropagates on the last layer when using Softmax output.
+
+Mini-batching:
+- With batch size B, gradients are averaged over B samples before an update. This reduces variance and can be more stable.
+- Effective learning rate per sample is lr/B; the example does this scaling internally when you pass --batch B.
+
+CLI options in the MNIST example:
+- Hidden activation: --hid-act relu|sigmoid|linear
+- Output activation: --out-act softmax|relu|sigmoid|linear (use softmax for classification)
+- Mini-batch size: --batch N (0 = per-sample SGD)
+- Epochs: --epochs K (default 5)
+- Learning rate: --lr 0.01 (default 0.01)
+
+Examples:
+```bash
+# Recommended for classification: ReLU hidden + Softmax output, batch 128, 5 epochs @ 0.01
+./examples/mnist_example --train --out-act softmax --hid-act relu --batch 128 --epochs 5 --lr 0.01
+
+# Linear output (e.g., for regression-style experiments), sigmoid hidden
+./examples/mnist_example --train --out-act linear --hid-act sigmoid --batch 0 --epochs 10 --lr 0.005
+```
+
 ## Project layout
 ```
 src/            # Core library (Matrix, Layer, Network, CUDA kernels)
@@ -75,7 +107,6 @@ data/mnist/     # MNIST download/convert script and generated .npy files
 ```
 
 ## Roadmap
-- Training: softmax + cross-entropy, mini-batching
 - Performance: more fused CUDA kernels, better memory reuse
 - Features: model config I/O (JSON/YAML), metrics & logging improvements
 - Data: URL/stream-based dataset loading (download/cache into .npy)

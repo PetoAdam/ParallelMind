@@ -29,17 +29,25 @@ Matrix Layer::forward(const Matrix& input) {
         reluInplace(out.data(), _numNodes);
     } else if (_activation == ActivationType::Sigmoid) {
         sigmoidInplace(out.data(), _numNodes);
+    } else if (_activation == ActivationType::Softmax) {
+        softmaxInplace(out.data(), _numNodes);
     } // Linear: no-op
     return out;
 }
 
 Matrix Layer::backward(const Matrix& error, float learningRate) {
     // Compute delta = error * activation'(z)
+    // For Softmax, when paired with cross-entropy, delta is provided by caller (Network)
     Matrix activated = forward(_lastInput); // activation of cached z
     Matrix delta(_numNodes,1);
-    // mode: 0 ReLU, 1 Sigmoid, 2 Linear
-    int mode = (_activation==ActivationType::ReLU?0:(_activation==ActivationType::Sigmoid?1:2));
-    computeDelta(delta.data(), error.data(), activated.data(), mode, _numNodes);
+    if (_activation == ActivationType::Softmax) {
+        // delta = error directly
+        cudaMemcpy(delta.data(), error.data(), _numNodes*sizeof(float), cudaMemcpyDeviceToDevice);
+    } else {
+        // mode: 0 ReLU, 1 Sigmoid, 2 Linear
+        int mode = (_activation==ActivationType::ReLU?0:(_activation==ActivationType::Sigmoid?1:2));
+        computeDelta(delta.data(), error.data(), activated.data(), mode, _numNodes);
+    }
 
     // prevError = W^T * delta
     // W: [M x N], delta: [M x 1] -> prevError: [N x 1]

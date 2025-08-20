@@ -49,4 +49,10 @@ void reluInplace(float* y, size_t n);
 void sigmoidInplace(float* y, size_t n);
 void computeDelta(float* delta, const float* error, const float* activated, int mode, size_t n);
 
+// Softmax and cross-entropy helpers
+// In-place softmax over a single vector of length n (expects column vector storage)
+void softmaxInplace(float* logits, size_t n);
+// Compute gradient of cross-entropy loss w.r.t logits: grad = softmax(logits) - target
+void softmaxCrossEntropyGrad(float* grad, const float* logits, const float* target, size_t n);
+
 #endif // PARALLELMIND_MATRIX_H
